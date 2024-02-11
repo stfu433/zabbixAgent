@@ -1,0 +1,7 @@
+---
+- name: Install Zabbix Agent
+  hosts: all
+  become: yes
+
+  roles:
+   - { role: InstZabbixAgent, when: ansible_system == 'Linux' }

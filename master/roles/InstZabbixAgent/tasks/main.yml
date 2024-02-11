@@ -1,0 +1,31 @@
+---
+# tasks file for InstZabbixAgent
+- name: ping servers
+  ping:
+
+- name: copy .deb file
+  copy: src=zabbixAgent.deb dest=/home/isurovikov/zabbixAgent.deb mode=0777
+
+- name: copy .deb file
+  copy: src=libmod.deb dest=/home/isurovikov/libmod.deb mode=0777
+
+- name: install libmod
+  apt:
+    deb: /home/isurovikov/libmod.deb
+
+- name: install zabbixAgent
+  apt:
+    deb: /home/isurovikov/zabbixAgent.deb
+
+- name: start zabbixagent
+  service: name=zabbix-agent state=started enabled=yes
+
+- name: copy zabbix conf
+  copy: src=zabbix_agentd.conf dest=/etc/zabbix/zabbix_agentd.conf
+  notify: Restart zabbix
+
+- name: delete garbage
+  file: path=/home/isurovikov/{{ item }} state=absent
+  loop:
+    - "libmod.deb"
+    - "zabbixAgent.deb"

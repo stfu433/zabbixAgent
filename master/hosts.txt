@@ -1,0 +1,8 @@
+
+[testAnsible]
+Ansible-test1 ansible_host=192.168.0.120
+
+Ansible-test2 ansible_host=192.168.0.121
+
+
+

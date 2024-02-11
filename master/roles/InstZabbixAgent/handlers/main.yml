@@ -1,0 +1,5 @@
+---
+# handlers file for InstZabbixAgent
+
+- name: Restart zabbix
+  service: name=zabbix-agent state=restarted
