@@ -1,31 +1,68 @@
 ---
 # tasks file for InstZabbixAgent
-- name: ping servers
-  ping:
 
-- name: copy .deb file
-  copy: src=zabbixAgent.deb dest=/home/isurovikov/zabbixAgent.deb mode=0777
+- name: copy files .deb 
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ dest_dir }}"
+  with_fileglob: "{{ files_dir }}"
 
-- name: copy .deb file
-  copy: src=libmod.deb dest=/home/isurovikov/libmod.deb mode=0777
+- name: install .deb files
+  become: true
+  ansible.builtin.apt:
+    deb: "{{ dest_dir }}{{ item }}"
+  loop: "{{ deb_files }}"
 
-- name: install libmod
-  apt:
-    deb: /home/isurovikov/libmod.deb
-
-- name: install zabbixAgent
-  apt:
-    deb: /home/isurovikov/zabbixAgent.deb
-
-- name: start zabbixagent
-  service: name=zabbix-agent state=started enabled=yes
-
-- name: copy zabbix conf
-  copy: src=zabbix_agentd.conf dest=/etc/zabbix/zabbix_agentd.conf
+- name: Generate config file
+  ansible.builtin.template:
+   src: "{{ conf_template }}"
+   dest: "{{ zabbix_conf_file }}"
   notify: Restart zabbix
 
+- name: Installing the Zabbix-api package on localhost
+  pip:
+    name: 
+     - zabbix-api
+     - jmespath
+    state: present
+  delegate_to: localhost
+  run_once: True
+  become: true
+
+- name: Create hostgroups
+  delegate_to: localhost
+  community.zabbix.zabbix_group:
+    server_url: "{{ zabbix_url }}"
+    login_user: "{{ zabbix_api_user }}"
+    login_password: "{{ zabbix_api_pass }}"
+    host_group: "{{ zabbix_host_groups }}"
+    state: present 
+
+- name: Register host
+  delegate_to: localhost
+  become: true
+  community.zabbix.zabbix_host: 
+    server_url: "{{ zabbix_url }}"
+    login_user: "{{ zabbix_api_user }}"
+    login_password: "{{ zabbix_api_pass }}"
+    host_name: "{{ ansible_nodename }}"
+    visible_name: "{{ ansible_nodename }}"
+    host_groups: "{{ zabbix_target_groups }}"
+    link_templates: "{{ zabbix_link_templates }}"
+    status: enabled
+    state: present
+    inventory_mode: disabled
+    interfaces:
+      - type: 1
+        main: 1
+        useip: 1
+        ip: "{{ ansible_default_ipv4.address }}"
+        dns: ""
+        port: "{{ zabbix_interface_port }}"
+
 - name: delete garbage
-  file: path=/home/isurovikov/{{ item }} state=absent
-  loop:
-    - "libmod.deb"
-    - "zabbixAgent.deb"
+  ansible.builtin.file: 
+   path: "{{ dest_dir }}{{ item }}"
+   state: absent
+  loop : "{{ deb_files }}"
